@@ -36,7 +36,8 @@ class BasicCNN(nn.Module):
 			if (dropout > 1 or dropout < 0) or type(dropout) is not float:
 				raise ValueError("Give Dropout Probability between 0 and 1")	
 			else:
-				self.dropout = nn.Dropout(p = dropout, inplace = False)
+				self.dropout1 = nn.Dropout(p = dropout, inplace = False)
+				self.dropout2 = nn.Dropout(p = dropout, inplace = False)
 
 
 		self.activation = activation
@@ -46,13 +47,13 @@ class BasicCNN(nn.Module):
 		out = self.conv1(x)
 		out = self.activation(out)
 		out = self.pool1(out)\
-		if self.dropout is not None:
-			out = self.dropout(out) 
+		if self.dropout1 is not None:
+			out = self.dropout2(out) 
 		out = self.conv2(out)
 		out = self.activation(out)
 		out = self.pool2(out)
-		if self.dropout is not None:
-			out = self.dropout(out) 
+		if self.dropout2 is not None:
+			out = self.dropout2(out) 
 		out = self.fc1(out)
 		out = self.fc2(out)
 
