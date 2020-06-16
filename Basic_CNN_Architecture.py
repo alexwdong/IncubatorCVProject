@@ -5,7 +5,8 @@ class BasicCNN(nn.Module):
 	def __init__(self, 
 			in_channels: int, 
 			enc_channels: int, 
-			out_channels: int, 
+			out_channels: int,
+			lin_channels: int, 
 			num_classes : int, 
 			kernel_size: int,
 			stride: int,
@@ -28,8 +29,8 @@ class BasicCNN(nn.Module):
 		self.pool1 = nn.MaxPool2d(enc_channels)
 		self.pool2 = nn.MaxPool2d(out_channels)
 
-		self.fc1 = nn.Linear(out_channels, enc_channels)
-		self.fc2 = nn.Linear(enc_channels, num_classes)
+		self.fc1 = nn.Linear(in_features = out_channels, out_features = lin_channels)
+		self.fc2 = nn.Linear(in_features = lin_channels, out_features = num_classes)
 
 		if dropout is not None:
 			if (dropout > 1 or dropout < 0) or type(dropout) is not float:
@@ -43,6 +44,16 @@ class BasicCNN(nn.Module):
 
 	def forward(self, x):
 		out = self.conv1(x)
-		out = self.pool1(out)
+		out = self.activation(out)
+		out = self.pool1(out)\
+		if self.dropout is not None:
+			out = self.dropout(out) 
 		out = self.conv2(out)
+		out = self.activation(out)
 		out = self.pool2(out)
+		if self.dropout is not None:
+			out = self.dropout(out) 
+		out = self.fc1(out)
+		out = self.fc2(out)
+
+		return out
