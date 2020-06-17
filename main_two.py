@@ -66,9 +66,7 @@ test_df_path =
 
 root_dir =
 
-#batch size and epochs
-bs = 10
-epochs = 20
+
 
 
 ###################################
@@ -81,30 +79,6 @@ train_loader =
 valid_loader =
 test_loader =
 
-###################################
-######### optim & criter ##########
-###################################
-
-optimizer = optim.Adam(model.parameters())
-
-# weighted cross entropy loss, for highly biased dataset
-# to be finished later
-train_weights =
-valid_weights =
-test_weights =
-
-
-train_criterion = nn.CrossEntropyLoss(weight=train_weights)
-valid_criterion = nn.CrossEntropyLoss(weight=valid_weights)
-test_criterion = nn.CrossEntropyLoss(weight=test_weights)
-
-# or:
-train_criterion = nn.CrossEntropyLoss()
-valid_criterion = nn.CrossEntropyLoss()
-test_criterion = nn.CrossEntropyLoss()
-
-
-
 
 ###################################
 ############ Train ############
@@ -115,12 +89,21 @@ print('###################################')
 
 
 # training process
-model = BasicCNN
+# to be finished later
+model = BasicCNN(in_channels,
+			     enc_channels,
+			     out_channels,
+			     lin_channels,
+			     num_classes,
+			     kernel_size,
+			     stride,
+			     dropout = None,
+			     activation = nn.ReLU(inplace = False))
 model.to(device)
 
-def train_valid(optimizer = optimizer, epochs = epochs, model = model,
-                train_criterion = train_criterion, train_loader = train_loader,
-                valid_criterion = valid_criterion, valid_loader = valid_loader,
+def train_valid(optimizer = optim.Adam(model.parameters()), epochs = 20, model = model,
+                train_criterion = nn.CrossEntropyLoss(), train_loader = train_loader,
+                valid_criterion = nn.CrossEntropyLoss(), valid_loader = valid_loader,
                 device = device):
 
     start_epoch = 1
@@ -189,7 +172,7 @@ print('###################################')
 print('############# Test ################')
 print('###################################')
 
-def test(optimizer = optimizer, model = model,  test_criterion = test_criterion,
+def test(optimizer = optim.Adam(model.parameters()), model = model,  test_criterion = nn.CrossEntropyLoss(),
          loader = test_loader, device = device):
 
     model.eval()
