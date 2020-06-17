@@ -35,16 +35,3 @@ Principal Component Analysis: https://github.com/leomiolane/linalg-for-ds/tree/m
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
