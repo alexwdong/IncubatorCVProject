@@ -1,8 +1,11 @@
 import numpy as np
 import os
-from PIL import Image
 import cv2
 import re
+import random
+from PIL import Image
+from torchvision.transforms import Pad
+
 
 def pad_image_w_zeros(image):
     shape = image.shape
@@ -52,3 +55,37 @@ def load_dog_data(data_path : str,
                 label_list.append(label)
     return((image_list,label_list,label_dict))
 
+
+class SquarePadding(object):
+    """Resize the input PIL Image to the given size.
+
+    Args:
+        size (sequence or int): Desired output size. If size is a sequence like
+            (h, w), output size will be matched to this. If size is an int,
+            smaller edge of the image will be matched to this number.
+            i.e, if height > width, then image will be rescaled to
+            (size * height / width, size)
+        interpolation (int, optional): Desired interpolation. Default is
+            ``PIL.Image.BILINEAR``
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(self, img):
+        """
+        Args:
+            img (PIL Image): Image to be scaled.
+
+        Returns:
+            PIL Image: Rescaled image.
+        """
+        width,height = img.size
+        if width>= height:
+            new_image = np.zeros((width,width))
+            size_diff =width-height
+            return Pad(padding=(0,int(size_diff/2))).__call__(img)
+        if height> width:
+            new_image = np.zeros((height,height))
+            size_diff = height-width
+            return Pad(padding=(int(size_diff/2),0)).__call__(img)
