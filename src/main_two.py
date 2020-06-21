@@ -21,17 +21,16 @@ import torch.optim as optim
 
 from sklearn import metrics
 
-#from skimage import io, color
-
 import time
 import os
 import pickle
 
 import matplotlib.pyplot as plt
-import scikitplot as skplt
+#import scikitplot as skplt
 
 from train_valid import train, validation
 from Basic_CNN_Architecture import BasicCNN
+from src.data_loader import load_dog_data
 
 
 ###################################
@@ -60,7 +59,13 @@ else:
 
 # hpc
 # please change file path here
-train_df_path =
+
+dog_dataset = ImageFolder(data_path,transform=Compose([
+    SquarePadding(),
+    Resize((128,128)),
+    ToTensor()
+]))                   
+data_loader = torch.utils.data.DataLoader(dog_dataset, batch_size=10, shuffle=True, drop_last=False, num_workers=4)train_df_path =
 val_df_path =
 test_df_path =
 
@@ -75,9 +80,34 @@ root_dir =
 
 # after feature engineering(task 3)
 
-train_loader =
-valid_loader =
-test_loader =
+#Variables for splitting the dataset into train/test
+validation_split = .1
+test_split = .1
+batch_size = 16
+shuffle_dataset = True
+random_seed = 42
+
+# Split 
+dataset_size = len(dog_dataset)
+indices = list(range(dataset_size))
+split_idx1 = int(np.floor((validation_split+test_split) * dataset_size))
+split_idx2 = int(np.floor(test_split * dataset_size))
+if shuffle_dataset:
+    np.random.seed(random_seed)
+    np.random.shuffle(indices)
+    
+test_indices, val_indices, train_indices = indices[:split_idx2], indices[split_idx2:split_idx1], indices[split_idx1:]
+
+# Creating PT data samplers and loaders:
+train_sampler = SubsetRandomSampler(train_indices)
+valid_sampler = SubsetRandomSampler(val_indices)
+#Load Train, val, test
+train_loader = torch.utils.data.DataLoader(dog_dataset, batch_size=batch_size, 
+                                           sampler=train_sampler)
+validation_loader = torch.utils.data.DataLoader(dog_dataset, batch_size=batch_size,
+                                                sampler=valid_sampler)
+test_loader =  torch.utils.data.DataLoader(dog_dataset, batch_size=batch_size,
+                                                sampler=test_sampler)
 
 
 ###################################
@@ -90,10 +120,10 @@ print('###################################')
 
 # training process
 # to be finished later
-model = BasicCNN(in_channels,
-			     enc_channels,
-			     out_channels,
-			     lin_channels,
+model = BasicCNN(in_channels=3, #RGB
+			     enc_channels=8,
+			     out_channels=12,
+			     lin_channels=,
 			     num_classes,
 			     kernel_size,
 			     stride,

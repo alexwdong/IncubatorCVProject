@@ -23,7 +23,7 @@ import os
 import pickle
 
 import matplotlib.pyplot as plt
-import scikitplot as skplt
+#import scikitplot as skplt
 
 
 ###################################
@@ -45,10 +45,11 @@ def train(epoch, model, optimizer, criterion, loader, device):
 
 
         #this part needs to be adapted later based on task 3
-        image = samples['image'].to(device)
-        label = samples['label'].squeeze()
-        label = torch.tensor(label, dtype=torch.long, device=device)
-
+        #print(samples)
+        image = samples[0].to(device)
+        label = samples[1].squeeze()
+        #label = torch.tensor(label, dtype=torch.long, device=device)
+        #print(image)
         output = model(image)
         _, preds = torch.max(output, dim = 1)
 
@@ -86,9 +87,9 @@ def validation(epoch, model, optimizer, criterion, loader, device, multiclass=Tr
     with torch.no_grad():
         for batch_idx, samples in enumerate(loader):
 
-            image = samples['image'].to(device)
-            label = samples['label'].squeeze()
-            label = torch.tensor(label, dtype=torch.long, device=device)
+            image = samples[0].to(device)
+            label = samples[1].squeeze()
+            #label = torch.tensor(label, dtype=torch.long, device=device)
 
             output = model(image)
             output_softmax = mysoftmax(output)
