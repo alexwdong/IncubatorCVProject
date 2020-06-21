@@ -26,7 +26,7 @@ import os
 import pickle
 
 import matplotlib.pyplot as plt
-import scikitplot as skplt
+#import scikitplot as skplt
 
 from train_valid import train, validation
 from Basic_CNN_Architecture import BasicCNN
