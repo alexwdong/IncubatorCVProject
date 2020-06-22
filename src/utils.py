@@ -4,6 +4,7 @@ import cv2
 import os
 from skimage.color import rgb2gray
 import pickle
+from sklearn.decomposition import PCA
 
 def plot_image_grid(images, 
                     title, 
@@ -14,10 +15,10 @@ def plot_image_grid(images,
                     row_titles=None,
                     col_titles=None,
                     save=False):
-    fig,axes = plt.subplots(nrows=nrows,ncols=ncols,figsize=(2. * n_col, 2.26 * n_row))
+    fig,axes = plt.subplots(nrows=nrows,ncols=ncols,figsize=(2. * ncols, 2.26 * nrows))
     for i, image in enumerate(images):
-        row,col = reversed(divmod(i,n_row)) if bycol else divmod(i,n_col) 
-        if nrow==1:
+        row,col = reversed(divmod(i,nrows)) if bycol else divmod(i,ncols) 
+        if nrows==1:
             cax = axes[col]
         else:
             cax = axes[row,col]
@@ -88,7 +89,7 @@ def make_pyramids(images_list,num_levels):
         all_pyramids_list.append(one_pyramid_list)
     return all_pyramids_list
 
-def PCA_images_list(images_list):
+def PCA_images_list(images_list,n_components=100):
     #Initialize X
     default_image_size = images_list[0].shape
     num_pixels = images_list[0].shape[0]*images_list[0].shape[1]
@@ -102,20 +103,23 @@ def PCA_images_list(images_list):
         X[ii,:] = unravel_image(image)
             
     #Perform PCA on X
-    cov = (X-X.mean(axis=0)).T@(X-X.mean(axis=0))
-    eig_vals,eig_vecs = np.linalg.eigh(cov)
-     
+    PCA_model = PCA(n_components=n_components)
+    PCA_model.fit(X)
+    eig_vecs =PCA_model.components_
+    eig_vals=PCA_model.explained_variance_ 
+    
+    #NOTE!!! The return of this is of shape (n_components,length_of_eig_vec).
+    #Each row is an eigenvectors, and the first row is the eigenvector with the
+    #largest eigenvalue
+        
     #"ravel" each eigenvector and push into new_eigvec_list
     new_eigvec_list = []
-    for ii in range(len(eig_vecs)):
-        
-        new_eig_vec = ravel_image_vec(eig_vecs[:,ii],default_image_size)
-            
+    for ii in range(eig_vecs.shape[0]):
+        new_eig_vec = ravel_image_vec(eig_vecs[ii,:],default_image_size)
         new_eigvec_list.append(new_eig_vec)
     #Now, return the eigval-eigvec pairs
     return (eig_vals,new_eigvec_list)
-
-def PCA_pyramids(all_pyramids_list):
+def PCA_pyramids(all_pyramids_list,n_components=100):
     '''
     For each level in each image pyramid, do a PCA on it, and return the eigenvalues and eigenvectors for
     each level in the pyramid.
@@ -133,7 +137,7 @@ def PCA_pyramids(all_pyramids_list):
             image = all_pyramids_list[img_idx][level_idx]
             image_list.append(image)
         
-        eig_vals_vecs_pair = PCA_images_list(image_list)
+        eig_vals_vecs_pair = PCA_images_list(image_list,n_components=100)
         eig_vals_vecs_per_level.append(eig_vals_vecs_pair)
         
     return eig_vals_vecs_per_level
