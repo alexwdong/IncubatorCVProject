@@ -47,7 +47,7 @@ def train(epoch, model, optimizer, criterion, loader, device):
         #this part needs to be adapted later based on task 3
         #print(samples)
         image = samples[0].to(device)
-        label = samples[1].squeeze()
+        label = samples[1].squeeze().to(device)
         #label = torch.tensor(label, dtype=torch.long, device=device)
         #print(image)
         output = model(image)
@@ -88,7 +88,7 @@ def validation(epoch, model, optimizer, criterion, loader, device, multiclass=Tr
         for batch_idx, samples in enumerate(loader):
 
             image = samples[0].to(device)
-            label = samples[1].squeeze()
+            label = samples[1].squeeze().to(device)
             #label = torch.tensor(label, dtype=torch.long, device=device)
 
             output = model(image)
