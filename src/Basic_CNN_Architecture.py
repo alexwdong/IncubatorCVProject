@@ -203,7 +203,7 @@ class BasicCNN_128x128_w_bn(nn.Module):
         out = self.pool3(out)
 
 
-        # fc layer = 2048 to 1024 to 512 to 256 to 128 to 64 to output 
+        # fc 
         out = self.flatten(out)
         out = self.fc1(out)
         out = self.activation(out)
