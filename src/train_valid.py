@@ -105,13 +105,12 @@ def validation(epoch, model, optimizer, criterion, loader, device, multiclass=Tr
             preds_list.append(preds.cpu().numpy())
             truelabels_list.append(label.cpu().numpy())
             probas_list.append(output_softmax.cpu().numpy())
-
+    
         valid_accuracy = correct / total_samples
 
         probas_list = np.vstack(probas_list)
         truelabels_list = np.concatenate(truelabels_list)
         preds_list = np.concatenate(preds_list)
-
         if multiclass == False:
             auc_score = metrics.roc_auc_score(truelabels_list, preds_list)
 
