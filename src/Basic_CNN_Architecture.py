@@ -62,7 +62,7 @@ class BasicCNN_128x128(nn.Module):
         out = self.pool1(out)
         print(3,out.size())
         if self.dropout1 is not None:
-            out = self.dropout2(out) 
+            out = self.dropout1(out) 
         out = self.conv2(out)
         print(4,out.size())
         out = self.activation(out)
@@ -284,3 +284,142 @@ class BasicCNN_w_features_128x128(nn.Module):
         out = self.fc2(out)
         out = self.softmax(out)
         return out
+
+    
+class ResidualBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        enc_channels: int,
+        activation=nn.ReLU(inplace=False),
+        batch_on=True,
+    ):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(
+            in_channels, enc_channels, kernel_size=3, stride=1, padding=1
+        )
+        self.conv2 = nn.Conv2d(
+            in_channels, enc_channels, kernel_size=3, stride=1, padding=1
+        )
+        self.bn1 = nn.BatchNorm2d(enc_channels) if batch_on else nn.Identity()
+        self.bn2 = nn.BatchNorm2d(enc_channels) if batch_on else nn.Identity()
+        self.activation = activation
+
+    def forward(self, x):
+        """
+        Create One Residual Block where we save the input
+        as the residual and add it after two convolutions
+        """
+        residual = x
+        # first convolution
+        out = self.conv1(x)
+
+        out = self.bn1(out)
+        out = self.activation(out)
+
+        # second convolution, add input after batchnorm step
+        out = self.conv2(out)
+
+        out = self.bn2(out)
+        out += residual
+        out = self.activation(out)
+
+        return out
+
+class ResNet(nn.Module):
+    def __init__(
+        self,
+        block,
+        in_channels : int,
+        conv1_out_channels : int,
+        conv2_out_channels: int,
+        num_blocks: int,
+        lin1_out_channels: int,
+        num_classes: int,
+        kernel_size = 5,
+        stride = 2,
+        padding = 2,
+        activation = nn.ReLU(inplace = False),
+        dropout= None,
+        batch_on = True
+        ):
+        super(ResNet, self).__init__()
+         
+        self.conv1 = nn.Conv2d(
+            in_channels=in_channels, 
+            out_channels=conv1_out_channels,
+            kernel_size=kernel_size, 
+            stride=stride,
+            padding=padding,
+            padding_mode='zeros'
+            )
+        self.conv2 = nn.Conv2d(
+            in_channels=conv1_out_channels, 
+            out_channels=conv2_out_channels,
+            kernel_size=kernel_size, 
+            stride=stride,
+            padding=padding,
+            padding_mode='zeros'
+            )
+        self.pool1 = nn.MaxPool2d(2)
+        self.pool2 = nn.MaxPool2d(2)
+        
+        self.bn1 = nn.BatchNorm2d(conv1_out_channels) if batch_on else nn.Identity()
+        self.bn2 = nn.BatchNorm2d(conv2_out_channels) if batch_on else nn.Identity()
+        
+        self.resblock = self.make_layer(
+            block, conv2_out_channels, num_blocks, activation, batch_on
+        )
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(in_features=8*8*conv2_out_channels,
+                             out_features=lin1_out_channels)
+        self.fc2 = nn.Linear(in_features=lin1_out_channels,
+                             out_features=num_classes)
+        
+        if dropout is not None:
+            if (dropout > 1 or dropout < 0) or type(dropout) is not float:
+                raise ValueError("Give Dropout Probability between 0 and 1")    
+            else:
+                self.dropout1 = nn.Dropout(p = dropout, inplace = False)
+                self.dropout2 = nn.Dropout(p = dropout, inplace = False)
+        else:
+            self.dropout1 = nn.Identity()
+            self.dropout2 = nn.Identity()
+    
+        self.activation = activation
+        self.softmax = nn.Softmax(dim=1)
+
+    def make_layer(
+        self, block, out_channels, num_blocks, activation, batch_on
+    ):
+
+        layers = []
+        for i in range(0, num_blocks):
+            layers.append(
+                block(out_channels, out_channels, activation, batch_on)
+            )
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        
+        encoding = self.conv1(x)
+        encoding = self.bn1(encoding) 
+        encoding = self.activation(encoding)
+        encoding = self.pool1(encoding)
+        encoding = self.dropout1(encoding)
+        
+        encoding = self.conv2(encoding)
+        encoding = self.bn2(encoding) 
+        encoding = self.activation(encoding)
+        encoding = self.pool2(encoding)
+        encoding = self.dropout2(encoding)
+        
+        encoding = self.resblock(encoding)
+        
+        encoding = self.flatten(encoding)
+        encoding = self.fc1(encoding)
+        encoding = self.activation(encoding)
+        encoding = self.fc2(encoding)
+        encoding = self.softmax(encoding)
+        
+        return encoding
