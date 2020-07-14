@@ -1,8 +1,3 @@
-
-###################################
-########## import library #########
-###################################
-
 import numpy as np
 import pandas as pd
 
@@ -23,14 +18,8 @@ import os
 import pickle
 
 import matplotlib.pyplot as plt
-#import scikitplot as skplt
 
-
-###################################
-######### def train/valid #########
-###################################
-
-def train(epoch, model, optimizer, criterion, loader, device):
+def train(epoch, model, optimizer, criterion, loader, device, train_feat):
 
     model.train()
 
@@ -42,17 +31,18 @@ def train(epoch, model, optimizer, criterion, loader, device):
 
     for batch_idx, samples in enumerate(loader):
 
-
-
-        #this part needs to be adapted later based on task 3
-        #print(samples)
         image = samples[0].to(device)
-        label = samples[1].squeeze().to(device)
+       
+        #label = samples[1].squeeze().to(device)
+        label = samples[1].to(device)
+        
         #label = torch.tensor(label, dtype=torch.long, device=device)
         #print(image)
-        output = model(image)
+        batch_size = image.size(0)
+        feat = torch.add(torch.ones([batch_size,1]),train_feat.flatten()).to(device)
+        output = model(image,feat)
         _, preds = torch.max(output, dim = 1)
-
+    
         loss = criterion(output, label)
         running_loss += loss.item()
         epoch_loss += loss.item()
@@ -70,7 +60,7 @@ def train(epoch, model, optimizer, criterion, loader, device):
 
     return epoch_loss / len(loader), training_accuracy
 
-def validation(epoch, model, optimizer, criterion, loader, device, multiclass=True):
+def validation(epoch, model, optimizer, criterion, loader, device, valid_feat, multiclass=True):
 
     model.eval( )
 
@@ -88,10 +78,13 @@ def validation(epoch, model, optimizer, criterion, loader, device, multiclass=Tr
         for batch_idx, samples in enumerate(loader):
 
             image = samples[0].to(device)
-            label = samples[1].squeeze().to(device)
+            
+            # label = samples[1].squeeze().to(device)
             #label = torch.tensor(label, dtype=torch.long, device=device)
-
-            output = model(image)
+            label = samples[1].to(device)
+            batch_size = image.size(0)
+            feat = torch.add(torch.ones([batch_size,1]),valid_feat.flatten()).to(device)
+            output = model(image,feat)
             output_softmax = mysoftmax(output)
 
             _, preds = torch.max(output, dim = 1)
