@@ -1,6 +1,6 @@
 # IncubatorCVProject
 
-
+DogDatasetReduced: https://drive.google.com/file/d/1CoxoGLxFExdnkb7eCKP1CMb3DdExyDPR/view?usp=sharing
 Useful links: https://github.com/BoyuanJiang/context_encoder_pytorch (Github repo for Context Encoder CNN written in pytorch)
 
 
