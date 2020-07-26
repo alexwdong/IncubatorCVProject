@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -10,16 +11,98 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 
 from sklearn import metrics
-
 from skimage import io, color
+
+from src.utils import unravel_image
 
 import time
 import os
 import pickle
 
-import matplotlib.pyplot as plt
 
-def train(epoch, model, optimizer, criterion, loader, device, train_feat):
+
+def train_valid(optimizer = None,
+                epochs = 20,
+                model = None,
+                train_criterion = None,
+                train_loader = None,
+                valid_criterion = None,
+                valid_loader = None,
+                device = None,
+                model_output_path = '.',
+                with_features=False,
+                train_eig_vecs = None,
+                ):
+
+    start_epoch = 1
+    #or: best_val_acc = 0
+    best_val_loss = np.inf
+
+    history = {"train_loss":[], "train_acc":[],
+                "valid_loss":[], "valid_acc":[], "valid_preds_list":[],
+                "valid_truelabels_list":[], "valid_probas_list":[], "valid_auc_score":[]}
+
+    start_time = time.time()
+
+    for epoch in range(start_epoch, epochs + 1):
+
+        train_loss, train_acc = train(epoch, model, optimizer, train_criterion, 
+                                      train_loader, device, with_features, train_eig_vecs)
+        history["train_loss"].append(train_loss)
+        history["train_acc"].append(train_acc)
+
+        print('epoch: ', epoch)
+        print('{}: loss: {:.4f} acc: {:.4f}'.format('training', train_loss, train_acc))
+
+        valid_loss, valid_acc, valid_preds_list, valid_truelabels_list, valid_probas_list, valid_auc_score = validation(epoch, model, optimizer, 
+                                                        valid_criterion, valid_loader, 
+                                                        device, with_features, train_eig_vecs)
+        history["valid_loss"].append(valid_loss)
+        history["valid_acc"].append(valid_acc)
+        history["valid_preds_list"].append(valid_preds_list)
+        history["valid_truelabels_list"].append(valid_truelabels_list)
+        history["valid_probas_list"].append(valid_probas_list)
+        history["valid_auc_score"].append(valid_auc_score)
+
+        print('{}: loss: {:.4f} acc: {:.4f} auc: {:.4f}'.format('validation', valid_loss, valid_acc, valid_auc_score))
+        print()
+
+        # save models(use valid loss as best model criterion, please change
+        # criterion here if needed(eg. valid acc)
+        is_best = valid_loss < best_val_loss
+        best_val_loss = min(valid_loss, best_val_loss)
+
+        if is_best:
+            # please change model file path here
+            best_model_file = model_output_path + "best_run_param.pth"
+            torch.save(model.state_dict(), best_model_file)
+
+        # save model from every training epoch
+        # can be deleted if do not need this one, or adapt it to save 5th, 10th, 15th ...models
+        model_file = model_output_path+"/param_" + str(epoch) + ".pth"
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss': train_loss,
+            }, model_file)
+        # save training/validation results
+        with open(model_output_path+"history.pkl", "wb") as fout:
+            pickle.dump(history, fout)
+        print('time elapsed:', time.time() - start_time)
+    print('total time elapsed:', time.time() - start_time)
+ 
+    return history
+
+def train(epoch,
+          model,
+          optimizer, 
+          criterion, 
+          loader, 
+          device, 
+          with_features=False, 
+          train_eig_vecs=None,
+          ):
 
     model.train()
 
@@ -32,15 +115,14 @@ def train(epoch, model, optimizer, criterion, loader, device, train_feat):
     for batch_idx, samples in enumerate(loader):
 
         image = samples[0].to(device)
-       
-        #label = samples[1].squeeze().to(device)
         label = samples[1].to(device)
-        
-        #label = torch.tensor(label, dtype=torch.long, device=device)
         #print(image)
         batch_size = image.size(0)
-        feat = torch.add(torch.ones([batch_size,1]),train_feat.flatten()).to(device)
-        output = model(image,feat)
+        if with_features:
+            feat = prepare_eigen_component_features(samples[0], train_eig_vecs).to(device)
+            output = model(image,feat)
+        else:
+            output = model(image)
         _, preds = torch.max(output, dim = 1)
     
         loss = criterion(output, label)
@@ -60,10 +142,18 @@ def train(epoch, model, optimizer, criterion, loader, device, train_feat):
 
     return epoch_loss / len(loader), training_accuracy
 
-def validation(epoch, model, optimizer, criterion, loader, device, valid_feat, multiclass=True):
+def validation(epoch, 
+               model, 
+               optimizer, 
+               criterion, 
+               loader, 
+               device, 
+               with_features = False,
+               train_eig_vecs=None, #yes, train! 
+               multiclass=True,
+               ):
 
     model.eval( )
-
     running_loss = 0.0
     total_samples = 0
     correct = 0
@@ -78,17 +168,19 @@ def validation(epoch, model, optimizer, criterion, loader, device, valid_feat, m
         for batch_idx, samples in enumerate(loader):
 
             image = samples[0].to(device)
-            
-            # label = samples[1].squeeze().to(device)
-            #label = torch.tensor(label, dtype=torch.long, device=device)
             label = samples[1].to(device)
             batch_size = image.size(0)
-            feat = torch.add(torch.ones([batch_size,1]),valid_feat.flatten()).to(device)
-            output = model(image,feat)
-            output_softmax = mysoftmax(output)
+            if with_features:
+                #print(image.shape)
+                feat = prepare_eigen_component_features(samples[0], train_eig_vecs).to(device)
+                output = model(image,feat)
+            else:
+                output = model(image)
+            
+            #output_softmax = mysoftmax(output)
 
             _, preds = torch.max(output, dim = 1)
-
+            
             loss = criterion(output, label)
             running_loss += loss.item()
 
@@ -97,7 +189,7 @@ def validation(epoch, model, optimizer, criterion, loader, device, valid_feat, m
 
             preds_list.append(preds.cpu().numpy())
             truelabels_list.append(label.cpu().numpy())
-            probas_list.append(output_softmax.cpu().numpy())
+            probas_list.append(output.cpu().numpy())
 
         valid_accuracy = correct / total_samples
 
@@ -115,3 +207,27 @@ def validation(epoch, model, optimizer, criterion, loader, device, valid_feat, m
 
 
         return running_loss / len(loader), valid_accuracy, preds_list, truelabels_list, probas_list, auc_score
+
+def prepare_eigen_component_features(images_list,eig_vecs):
+    '''
+    Inputs:
+        images_list: list of images (images are ndarrays, usually of 2 dimensions (e.g 128x128))
+        eig_vecs: an 2d array of eigenvectors, where each eigenvector is a column
+    Outputs:
+        return: returns a feature matrix, where the rows of the feature matrix correspond to the 
+        features of images. First image is the first row of the matrix, last image is the last row.
+        The features are the components of the eigenvectors (which were passed in the input 'eig_vecs')
+    '''
+    gray_image = torch.stack([transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Grayscale(num_output_channels=1),
+            transforms.ToTensor()])(images_list[i]) 
+            for i in range(images_list.size(0))])
+    feat = torch.transpose(eig_vecs,0,1)
+    image_vec = torch.flatten(gray_image,1)
+    feature_matrix = image_vec@feat
+        
+    return feature_matrix
+
+
+    

@@ -5,6 +5,7 @@ import os
 from skimage.color import rgb2gray
 import pickle
 from sklearn.decomposition import PCA
+import torch
 
 def plot_image_grid(images, 
                     title, 
@@ -91,34 +92,27 @@ def make_pyramids(images_list,num_levels):
 
 def PCA_images_list(images_list,n_components=100):
     #Initialize X
-    default_image_size = images_list[0].shape
-    num_pixels = images_list[0].shape[0]*images_list[0].shape[1]
-    X = np.zeros((len(images_list),num_pixels))
+    img_h,img_w = images_list.size()[-2:]
+    default_image_size = images_list.size()[-2:]
+    num_pixels = img_h*img_w
+    X = images_list.flatten(1).numpy()
     #Now grab all the images and push them into X
-    for ii,image in enumerate(images_list):
-        #We "unravel" the image into a 1d array, we will have to "ravel" it later
-        if image.shape!= default_image_size:
-            raise ValueError('All images must be same size. Image number '+ str(ii +1)+
-                             'was not the same size as the first image in the list')
-        X[ii,:] = unravel_image(image)
-            
+
     #Perform PCA on X
     PCA_model = PCA(n_components=n_components)
     PCA_model.fit(X)
     eig_vecs =PCA_model.components_
     eig_vals=PCA_model.explained_variance_ 
-    
     #NOTE!!! The return of this is of shape (n_components,length_of_eig_vec).
     #Each row is an eigenvectors, and the first row is the eigenvector with the
     #largest eigenvalue
-        
+   
     #"ravel" each eigenvector and push into new_eigvec_list
-    new_eigvec_list = []
-    for ii in range(eig_vecs.shape[0]):
-        new_eig_vec = ravel_image_vec(eig_vecs[ii,:],default_image_size)
-        new_eigvec_list.append(new_eig_vec)
+    # new_eigvec = torch.Tensor(eig_vecs).view((n_components,img_h,img_w))
+    new_eigvec = torch.Tensor(eig_vecs)
     #Now, return the eigval-eigvec pairs
-    return (eig_vals,new_eigvec_list)
+    return (eig_vals,new_eigvec)
+
 def PCA_pyramids(all_pyramids_list,n_components=100):
     '''
     For each level in each image pyramid, do a PCA on it, and return the eigenvalues and eigenvectors for
