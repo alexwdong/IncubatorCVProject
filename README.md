@@ -4,7 +4,8 @@ DogDatasetReduced: https://drive.google.com/file/d/1-UiAHBys06NBvGCXQtVT7vMmgVzx
 Useful links: https://github.com/BoyuanJiang/context_encoder_pytorch (Github repo for Context Encoder CNN written in pytorch)
 
 
-
+## GAN Models:
+https://drive.google.com/drive/folders/1YxC4jUii5xUze4j2LYYLYU8VcKe6xVs8?usp=sharing
 ## Reading Links:
 
 **For Next Meeting (06/20 - 06/22), please read on Dropout, Batch Normalization, Residual Nets, Kernel PCA.**
